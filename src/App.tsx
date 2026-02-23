@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 
@@ -10,6 +10,7 @@ interface IceProduct {
   pricePerKg: number;
   image: string;
   category: string;
+  available: boolean;
 }
 
 // Restaurant registration type
@@ -37,7 +38,8 @@ const iceProducts: IceProduct[] = [
     description: 'Premium quality transparent ice cubes, perfect for bars and restaurants. Slow-melting crystals keep drinks cold without diluting flavor.',
     pricePerKg: 25,
     image: '🧊',
-    category: 'Ice Cubes'
+    category: 'Ice Cubes',
+    available: true
   },
   {
     id: 2,
@@ -45,7 +47,8 @@ const iceProducts: IceProduct[] = [
     description: 'Finely crushed ice ideal for smoothies, slushies, and food displays. Quick cooling and perfect texture.',
     pricePerKg: 20,
     image: '🧊',
-    category: 'Crushed Ice'
+    category: 'Crushed Ice',
+    available: true
   },
   {
     id: 3,
@@ -53,7 +56,8 @@ const iceProducts: IceProduct[] = [
     description: 'Large solid ice blocks perfect for catering, food preservation, and decorative purposes.',
     pricePerKg: 18,
     image: '🧊',
-    category: 'Block Ice'
+    category: 'Block Ice',
+    available: true
   },
   {
     id: 4,
@@ -61,7 +65,8 @@ const iceProducts: IceProduct[] = [
     description: 'Professional grade dry ice for food transport, fog effects, and industrial cooling applications.',
     pricePerKg: 80,
     image: '❄️',
-    category: 'Specialty'
+    category: 'Specialty',
+    available: false
   },
   {
     id: 5,
@@ -69,7 +74,8 @@ const iceProducts: IceProduct[] = [
     description: 'Premium ice cream mix for commercial use. Make your own ice cream with consistent quality.',
     pricePerKg: 120,
     image: '🍦',
-    category: 'Ice Cream'
+    category: 'Ice Cream',
+    available: false
   },
   {
     id: 6,
@@ -77,7 +83,8 @@ const iceProducts: IceProduct[] = [
     description: 'Colorful fruit-flavored ice cubes that add visual appeal and taste to beverages.',
     pricePerKg: 45,
     image: '🍋',
-    category: 'Specialty'
+    category: 'Specialty',
+    available: false
   },
   {
     id: 7,
@@ -85,7 +92,8 @@ const iceProducts: IceProduct[] = [
     description: 'Professional whipped cream dispensers for cafes, bakeries, and dessert parlors.',
     pricePerKg: 150,
     image: '🫧',
-    category: 'Dairy'
+    category: 'Dairy',
+    available: false
   },
   {
     id: 8,
@@ -93,12 +101,13 @@ const iceProducts: IceProduct[] = [
     description: 'Premium ice pops in various flavors. Perfect for cafes, hotels, and retail stores.',
     pricePerKg: 60,
     image: '🍧',
-    category: 'Specialty'
+    category: 'Specialty',
+    available: false
   }
 ];
 
 // WhatsApp number (replace with actual number)
-const WHATSAPP_NUMBER = '919999999999';
+const WHATSAPP_NUMBER = '918824225964';
 
 // Navigation Component
 function Navigation() {
@@ -108,7 +117,7 @@ function Navigation() {
   const navLinks = [
     { to: "/", label: "Home" },
     { to: "/products", label: "Products" },
-    { to: "/register", label: "Partner" },
+    { to: "/register", label: "Become a Partner" },
   ];
   
   const closeMenu = () => setMobileMenuOpen(false);
@@ -121,8 +130,8 @@ function Navigation() {
           <Link to="/" className="flex items-center space-x-2" onClick={closeMenu}>
             <span className="text-2xl sm:text-3xl">🧊</span>
             <div>
-              <h1 className="text-white font-bold text-sm sm:text-lg md:text-xl">Dhiraj Ice Factory</h1>
-              <p className="text-cyan-200 text-[9px] sm:text-xs hidden sm:block">Premium Ice Since 1995</p>
+              <h1 className="text-white font-bold text-sm sm:text-lg md:text-xl">Dhiraj Ice Centre</h1>
+              <p className="text-cyan-200 text-[9px] sm:text-xs hidden sm:block">Premium Ice Since 1985</p>
             </div>
           </Link>
           
@@ -258,9 +267,10 @@ function Hero() {
 function ProductCard({ product }: { product: IceProduct }) {
   const [quantity, setQuantity] = useState(1);
   const totalPrice = product.pricePerKg * quantity;
+  const isAvailable = product.available;
 
   return (
-    <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 sm:hover:-translate-y-2">
+    <div className={`bg-white rounded-xl sm:rounded-2xl shadow-lg overflow-hidden transition-all duration-300 ${isAvailable ? "hover:shadow-2xl transform hover:-translate-y-1 sm:hover:-translate-y-2" : "opacity-75"}`}>
       <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-4 sm:p-6 md:p-8 text-center">
         <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl mb-2 sm:mb-4">{product.image}</div>
         <span className="bg-cyan-100 text-cyan-700 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
@@ -269,13 +279,13 @@ function ProductCard({ product }: { product: IceProduct }) {
       </div>
       
       <div className="p-4 sm:p-6">
-        <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-1 sm:mb-2">{product.name}</h3>
-        <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 line-clamp-2">{product.description}</p>
+        <h3 className={`text-base sm:text-lg md:text-xl font-bold mb-1 sm:mb-2 ${isAvailable ? "text-gray-800" : "text-gray-500 line-through"}`}>{product.name}</h3>
+        <p className={`text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-2 ${isAvailable ? "text-gray-600" : "text-gray-400 line-through"}`}>{product.description}</p>
         
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <div>
             <span className="text-xs sm:text-sm text-gray-500">Price per KG</span>
-            <div className="text-xl sm:text-2xl font-bold text-cyan-600">₹{product.pricePerKg}</div>
+            <div className={`text-xl sm:text-2xl font-bold ${isAvailable ? "text-cyan-600" : "text-gray-400 line-through"}`}>₹{product.pricePerKg}</div>
           </div>
         </div>
         
@@ -286,14 +296,16 @@ function ProductCard({ product }: { product: IceProduct }) {
             <div className="flex items-center space-x-2 sm:space-x-3">
               <button 
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full shadow flex items-center justify-center text-lg sm:text-xl font-bold text-cyan-600 hover:bg-cyan-50 transition-colors"
+                disabled={!isAvailable}
+                className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full shadow flex items-center justify-center text-lg sm:text-xl font-bold text-cyan-600 hover:bg-cyan-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 -
               </button>
               <span className="w-8 sm:w-12 text-center font-bold text-base sm:text-lg">{quantity}</span>
               <button 
                 onClick={() => setQuantity(quantity + 1)}
-                className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full shadow flex items-center justify-center text-lg sm:text-xl font-bold text-cyan-600 hover:bg-cyan-50 transition-colors"
+                disabled={!isAvailable}
+                className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full shadow flex items-center justify-center text-lg sm:text-xl font-bold text-cyan-600 hover:bg-cyan-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 +
               </button>
@@ -308,14 +320,24 @@ function ProductCard({ product }: { product: IceProduct }) {
           </div>
         </div>
         
-        <a 
-          href={`https://wa.me/${WHATSAPP_NUMBER}?text=I'm%20interested%20in%20${encodeURIComponent(product.name)}%20-%20${quantity}KG%20(%20₹${totalPrice})`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white text-center py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-semibold text-sm sm:text-base transition-all"
-        >
-          Order on WhatsApp 🛒
-        </a>
+        {isAvailable ? (
+          <a 
+            href={`https://wa.me/${WHATSAPP_NUMBER}?text=I'm%20interested%20in%20${encodeURIComponent(product.name)}%20-%20${quantity}KG%20(%20₹${totalPrice})`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white text-center py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-semibold text-sm sm:text-base transition-all"
+          >
+            Order on WhatsApp 🛒
+          </a>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="block w-full bg-gray-300 text-gray-600 text-center py-2.5 sm:py-3 rounded-lg sm:rounded-xl font-semibold text-sm sm:text-base cursor-not-allowed line-through"
+          >
+            Currently Unavailable
+          </button>
+        )}
       </div>
     </div>
   );
@@ -368,10 +390,10 @@ function LocationSection() {
                 <div>
                   <h4 className="text-white font-semibold text-sm sm:text-base">Address</h4>
                   <p className="text-cyan-100 text-sm sm:text-base">
-                    Dhiraj Ice Factory<br />
-                    Baguihati Market, VIP Road<br />
-                    Near Bata Showroom<br />
-                    City: Kolkata, State - 700159
+                    Dheeraj Ice Centre<br />
+                    BC 17 NARAYAN TALLA WEST<br />
+                    Near raj laxmi beeding stor, Baguiati<br />
+                    Kolkata-700059, West Bengal.
                   </p>
                 </div>
               </div>
@@ -396,8 +418,7 @@ function LocationSection() {
                 </div>
                 <div>
                   <h4 className="text-white font-semibold text-sm sm:text-base">Business Hours</h4>
-                  <p className="text-cyan-100 text-sm sm:text-base">Mon - Sat: 6:00 AM - 10:00 PM</p>
-                  <p className="text-cyan-100 text-sm sm:text-base">Sunday: 8:00 AM - 6:00 PM</p>
+                  <p className="text-cyan-100 text-sm sm:text-base">Mon - Sat 6:00AM - 10:00 PM</p>
                   <p className="text-cyan-100 mt-1 sm:mt-2 text-xs sm:text-sm">* 24/7 Emergency for Bulk Orders</p>
                 </div>
               </div>
@@ -428,21 +449,27 @@ function LocationSection() {
             </a>
           </div>
           
-          {/* Map Placeholder */}
-          <div className="bg-white/10 backdrop-blur rounded-xl sm:rounded-2xl md:rounded-3xl p-4 sm:p-6 h-64 sm:h-72 md:h-80 lg:h-96 flex items-center justify-center">
-            <div className="text-center px-4">
-              <div className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl mb-3 sm:mb-4">🗺️</div>
-              <p className="text-white text-base sm:text-lg md:text-xl mb-1">Interactive Map</p>
-              <p className="text-cyan-200 text-sm sm:text-base mb-4">Click to view on Google Maps</p>
-              <a 
-                href="https://maps.google.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block bg-cyan-500 hover:bg-cyan-600 text-white px-4 sm:px-6 py-2 rounded-full transition-colors text-sm sm:text-base"
-              >
-                Open in Maps
-              </a>
-            </div>
+          {/* Embedded Google Map */}
+          <div className="bg-white/10 backdrop-blur rounded-xl sm:rounded-2xl md:rounded-3xl p-2 sm:p-3 h-64 sm:h-72 md:h-80 lg:h-96 overflow-hidden">
+            <iframe
+              title="Dhiraj Ice Centre Location"
+              src="https://www.google.com/maps?q=BC+17+NARAYAN+TALLA+WEST,+Near+raj+laxmi+beeding+stor,+Baguiati,+Kolkata-700059,+West+Bengal&output=embed"
+              className="w-full h-full rounded-lg sm:rounded-xl border-0"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              allowFullScreen
+            />
+          </div>
+
+          <div className="md:col-span-2 text-center -mt-2">
+            <a
+              href="https://maps.app.goo.gl/wdzFHL8AMrshJgHy5"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-cyan-500 hover:bg-cyan-600 text-white px-4 sm:px-6 py-2 rounded-full transition-colors text-sm sm:text-base"
+            >
+              Open Exact Location in Google Maps
+            </a>
           </div>
         </div>
       </div>
@@ -460,8 +487,8 @@ function Footer() {
             <div className="flex items-center space-x-2 mb-3 sm:mb-4">
               <span className="text-2xl sm:text-3xl">🧊</span>
               <div>
-                <h3 className="text-lg sm:text-xl font-bold">Dhiraj Ice Factory</h3>
-                <p className="text-cyan-200 text-xs sm:text-sm">Premium Ice Since 1995</p>
+                <h3 className="text-lg sm:text-xl font-bold">Dhiraj Ice Centre</h3>
+                <p className="text-cyan-200 text-xs sm:text-sm">Premium Ice Since 1985</p>
               </div>
             </div>
             <p className="text-gray-400 text-sm">
@@ -481,7 +508,7 @@ function Footer() {
           <div className="sm:col-span-2 md:col-span-1">
             <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Contact Us</h4>
             <ul className="space-y-2 text-gray-400 text-sm">
-              <li>📍 [Your Address]</li>
+              <li>📍 Dheeraj Ice Centre<br />BC 17 NARAYAN TALLA WEST<br />Near raj laxmi beeding stor, Baguiati<br />Kolkata-700059, West Bengal.</li>
               <li>📞 +91 98765 43210</li>
               <li>✉️ info@dhirajicefactory.com</li>
             </ul>
@@ -500,7 +527,7 @@ function Footer() {
         </div>
         
         <div className="border-t border-gray-800 mt-6 sm:mt-8 pt-6 sm:pt-8 text-center text-gray-500 text-xs sm:text-sm">
-          <p>© 2024 Dhiraj Ice Factory. All rights reserved.</p>
+          <p>© 2024 Dhiraj Ice Centre. All rights reserved.</p>
         </div>
       </div>
     </footer>
@@ -590,7 +617,7 @@ function RegistrationPage() {
             <div className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl mb-4 sm:mb-6">✅</div>
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-3 sm:mb-4">Application Submitted!</h2>
             <p className="text-gray-600 mb-6 sm:mb-8 text-sm sm:text-base">
-              Thank you for your interest in becoming a partner with Dhiraj Ice Factory. 
+              Thank you for your interest in becoming a partner with Dhiraj Ice Centre. 
               Our team will review your application and contact you within 24-48 hours.
             </p>
             <div className="bg-cyan-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 text-left">
