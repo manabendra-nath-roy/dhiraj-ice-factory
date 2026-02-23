@@ -36,11 +36,33 @@ function getFirebaseConfig() {
   return { projectId, apiKey };
 }
 
-export async function savePartnerApplication(payload: PartnerApplicationPayload) {
+async function saveThroughVercelApi(payload: PartnerApplicationPayload) {
+  const response = await fetch('/api/partner-application', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data?.error || `Submission failed via /api/partner-application (${response.status}).`);
+  }
+
+  return data;
+}
+
+async function saveDirectToFirestore(payload: PartnerApplicationPayload) {
   const { projectId, apiKey } = getFirebaseConfig();
 
   if (!projectId || !apiKey) {
-    throw new Error('Firebase config missing. Set .env values (VITE_FIREBASE_PROJECT_ID + VITE_FIREBASE_API_KEY), or provide window.__FIREBASE_CONFIG__ with projectId/apiKey, then restart npm run dev.');
+    throw new Error('Firebase config missing. On Vercel, set FIREBASE_PROJECT_ID and FIREBASE_API_KEY (recommended server-side path), or set VITE_FIREBASE_PROJECT_ID + VITE_FIREBASE_API_KEY and redeploy.');
   }
 
   const endpoint = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/partner_applications?key=${apiKey}`;
@@ -80,7 +102,7 @@ export async function savePartnerApplication(payload: PartnerApplicationPayload)
         if (firestoreMessage.includes('PERMISSION_DENIED')) {
           errorMessage = 'Permission denied by Firestore rules. Allow create access to partner_applications (or authenticate admin/client properly).';
         } else if (firestoreMessage.includes('API_KEY_INVALID')) {
-          errorMessage = 'Firebase API key is invalid. Check VITE_FIREBASE_API_KEY in .env.';
+          errorMessage = 'Firebase API key is invalid. Check FIREBASE_API_KEY / VITE_FIREBASE_API_KEY.';
         } else if (firestoreMessage.includes('SERVICE_DISABLED')) {
           errorMessage = 'Firestore API is disabled for this Firebase project. Enable Firestore API in Google Cloud Console.';
         } else {
@@ -98,4 +120,13 @@ export async function savePartnerApplication(payload: PartnerApplicationPayload)
   }
 
   return response.json();
+}
+
+export async function savePartnerApplication(payload: PartnerApplicationPayload) {
+  const vercelApiResult = await saveThroughVercelApi(payload);
+  if (vercelApiResult) {
+    return vercelApiResult;
+  }
+
+  return saveDirectToFirestore(payload);
 }
