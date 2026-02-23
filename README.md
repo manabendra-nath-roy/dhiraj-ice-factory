@@ -126,7 +126,27 @@ Set these in **Vercel Project Settings → Environment Variables**:
 
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_API_KEY`
+- `ADMIN_PORTAL_ID`
+- `ADMIN_PORTAL_PASSWORD`
 
 Then **Redeploy**.
 
 This avoids exposing your Firebase credentials in client bundle and prevents common `Firebase config missing` issues on Vercel.
+
+
+### Admin-friendly document view (/admin)
+
+A mobile-friendly admin portal is available at:
+
+- `/#/admin`
+
+It displays partner submissions in card/document format (easy for non-technical users).
+
+Set these environment variables in Vercel:
+
+- `ADMIN_PORTAL_ID`
+- `ADMIN_PORTAL_PASSWORD`
+
+Then share only this ID/password with your admin.
+
+> Note: Keep admin credentials only in Vercel Environment Variables. Do not hardcode them in GitHub code.
