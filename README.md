@@ -102,3 +102,13 @@ After deployment, submitted forms appear in Firebase Console under:
 - Firestore Database → `partner_applications`
 
 Each document stores restaurant details, contact/address, requested quantity, status, and submit timestamps.
+
+
+### Troubleshooting form submission errors
+
+If you see an error while submitting the partner form:
+
+- **`Firebase config missing...`** → add `VITE_FIREBASE_PROJECT_ID` and `VITE_FIREBASE_API_KEY` in `.env`, then restart `npm run dev`.
+- **`Permission denied by Firestore rules...`** → update Firestore Security Rules to allow `create` on `partner_applications` for your client/auth model.
+- **`API key is invalid`** → recheck the Web API key in Firebase project settings.
+- **`Firestore API is disabled`** → enable Firestore API in Google Cloud Console for the same project.

@@ -18,7 +18,7 @@ export async function savePartnerApplication(payload: PartnerApplicationPayload)
   const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
 
   if (!projectId || !apiKey) {
-    throw new Error('Firebase config is missing. Add VITE_FIREBASE_PROJECT_ID and VITE_FIREBASE_API_KEY.');
+    throw new Error('Firebase config missing: set VITE_FIREBASE_PROJECT_ID and VITE_FIREBASE_API_KEY in your .env file, then restart the dev server.');
   }
 
   const endpoint = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/partner_applications?key=${apiKey}`;
@@ -48,8 +48,31 @@ export async function savePartnerApplication(payload: PartnerApplicationPayload)
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Firestore request failed: ${response.status} ${errorText}`);
+    let errorMessage = `Firestore request failed (${response.status}).`;
+
+    try {
+      const errorBody = await response.json();
+      const firestoreMessage = errorBody?.error?.message as string | undefined;
+
+      if (firestoreMessage) {
+        if (firestoreMessage.includes('PERMISSION_DENIED')) {
+          errorMessage = 'Permission denied by Firestore rules. Allow create access to partner_applications (or authenticate admin/client properly).';
+        } else if (firestoreMessage.includes('API_KEY_INVALID')) {
+          errorMessage = 'Firebase API key is invalid. Check VITE_FIREBASE_API_KEY in .env.';
+        } else if (firestoreMessage.includes('SERVICE_DISABLED')) {
+          errorMessage = 'Firestore API is disabled for this Firebase project. Enable Firestore API in Google Cloud Console.';
+        } else {
+          errorMessage = firestoreMessage;
+        }
+      }
+    } catch {
+      const fallbackText = await response.text();
+      if (fallbackText) {
+        errorMessage = `${errorMessage} ${fallbackText}`;
+      }
+    }
+
+    throw new Error(errorMessage);
   }
 
   return response.json();

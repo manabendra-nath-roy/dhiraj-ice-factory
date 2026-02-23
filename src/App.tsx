@@ -610,7 +610,8 @@ function RegistrationPage() {
       setSubmitted(true);
     } catch (error) {
       console.error('Failed to submit partner application:', error);
-      setSubmitError('Unable to submit your application right now. Please try again in a few minutes.');
+      const errorMessage = error instanceof Error ? error.message : 'Unable to submit your application right now. Please try again in a few minutes.';
+      setSubmitError(errorMessage);
     } finally {
       setLoading(false);
     }
