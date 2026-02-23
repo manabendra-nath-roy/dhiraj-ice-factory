@@ -13,12 +13,34 @@ type PartnerApplicationPayload = {
   submittedAtIso: string;
 };
 
+type RuntimeFirebaseConfig = {
+  projectId?: string;
+  apiKey?: string;
+};
+
+function getFirebaseConfig() {
+  const runtimeConfig = ((globalThis as { __FIREBASE_CONFIG__?: RuntimeFirebaseConfig }).__FIREBASE_CONFIG__ || {}) as RuntimeFirebaseConfig;
+
+  const projectId =
+    runtimeConfig.projectId ||
+    import.meta.env.VITE_FIREBASE_PROJECT_ID ||
+    import.meta.env.VITE_FIREBASE_PROJECTID ||
+    import.meta.env.VITE_PROJECT_ID;
+
+  const apiKey =
+    runtimeConfig.apiKey ||
+    import.meta.env.VITE_FIREBASE_API_KEY ||
+    import.meta.env.VITE_FIREBASE_WEB_API_KEY ||
+    import.meta.env.VITE_API_KEY;
+
+  return { projectId, apiKey };
+}
+
 export async function savePartnerApplication(payload: PartnerApplicationPayload) {
-  const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
-  const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+  const { projectId, apiKey } = getFirebaseConfig();
 
   if (!projectId || !apiKey) {
-    throw new Error('Firebase config missing: set VITE_FIREBASE_PROJECT_ID and VITE_FIREBASE_API_KEY in your .env file, then restart the dev server.');
+    throw new Error('Firebase config missing. Set .env values (VITE_FIREBASE_PROJECT_ID + VITE_FIREBASE_API_KEY), or provide window.__FIREBASE_CONFIG__ with projectId/apiKey, then restart npm run dev.');
   }
 
   const endpoint = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/partner_applications?key=${apiKey}`;
