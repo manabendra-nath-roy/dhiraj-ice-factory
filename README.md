@@ -112,3 +112,4 @@ If you see an error while submitting the partner form:
 - **`Permission denied by Firestore rules...`** → update Firestore Security Rules to allow `create` on `partner_applications` for your client/auth model.
 - **`API key is invalid`** → recheck the Web API key in Firebase project settings.
 - **`Firestore API is disabled`** → enable Firestore API in Google Cloud Console for the same project.
+- If the form still fails, open browser DevTools → Network and check the Firestore request response body for exact server details.
