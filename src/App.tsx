@@ -224,18 +224,20 @@ function Hero() {
             Premium quality ice cubes, crushed ice, and specialty ice products for restaurants, bars, hotels, and events.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
-            <a 
-              href="#products"
+            <button
+              type="button"
+              onClick={() => document.getElementById('products')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               className="bg-cyan-500 hover:bg-cyan-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full font-semibold text-sm sm:text-lg transition-all transform hover:scale-105 shadow-lg"
             >
               View Products
-            </a>
-            <a 
-              href="#location"
+            </button>
+            <button
+              type="button"
+              onClick={() => document.getElementById('location')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               className="bg-white/10 hover:bg-white/20 text-white border-2 border-white px-6 sm:px-8 py-3 sm:py-4 rounded-full font-semibold text-sm sm:text-lg transition-all"
             >
               Our Location
-            </a>
+            </button>
           </div>
         </div>
         
@@ -450,26 +452,28 @@ function LocationSection() {
           </div>
           
           {/* Embedded Google Map */}
-          <div className="bg-white/10 backdrop-blur rounded-xl sm:rounded-2xl md:rounded-3xl p-2 sm:p-3 h-64 sm:h-72 md:h-80 lg:h-96 overflow-hidden">
-            <iframe
-              title="Dhiraj Ice Centre Location"
-              src="https://www.google.com/maps?q=BC+17+NARAYAN+TALLA+WEST,+Near+raj+laxmi+beeding+stor,+Baguiati,+Kolkata-700059,+West+Bengal&output=embed"
-              className="w-full h-full rounded-lg sm:rounded-xl border-0"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              allowFullScreen
-            />
-          </div>
+          <div className="space-y-3 sm:space-y-4">
+            <div className="bg-white/10 backdrop-blur rounded-xl sm:rounded-2xl md:rounded-3xl p-2 sm:p-3 h-64 sm:h-72 md:h-80 lg:h-96 overflow-hidden">
+              <iframe
+                title="Dhiraj Ice Centre Location"
+                src="https://www.google.com/maps?q=BC+17+NARAYAN+TALLA+WEST,+Near+raj+laxmi+beeding+stor,+Baguiati,+Kolkata-700059,+West+Bengal&output=embed"
+                className="w-full h-full rounded-lg sm:rounded-xl border-0"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+              />
+            </div>
 
-          <div className="md:col-span-2 text-center -mt-2">
-            <a
-              href="https://maps.app.goo.gl/wdzFHL8AMrshJgHy5"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block bg-cyan-500 hover:bg-cyan-600 text-white px-4 sm:px-6 py-2 rounded-full transition-colors text-sm sm:text-base"
-            >
-              Open Exact Location in Google Maps
-            </a>
+            <div className="text-center">
+              <a
+                href="https://maps.app.goo.gl/wdzFHL8AMrshJgHy5"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block bg-cyan-500 hover:bg-cyan-600 text-white px-4 sm:px-6 py-2 rounded-full transition-colors text-sm sm:text-base"
+              >
+                Open Exact Location in Google Maps
+              </a>
+            </div>
           </div>
         </div>
       </div>
