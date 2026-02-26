@@ -47,6 +47,11 @@ interface AdminApplication {
   submittedAtIso: string;
 }
 
+interface AdminSession {
+  id: string;
+  password: string;
+}
+
 // Ice products data
 const iceProducts: IceProduct[] = [
   {
@@ -898,6 +903,7 @@ function AdminPage() {
   const [adminPassword, setAdminPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [applications, setApplications] = useState<AdminApplication[]>([]);
+  const [session, setSession] = useState<AdminSession | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -922,26 +928,15 @@ function AdminPage() {
 
       setApplications(data.applications || []);
       setIsAuthenticated(true);
-      sessionStorage.setItem('admin_id', id);
-      sessionStorage.setItem('admin_password', password);
+      setSession({ id, password });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load applications.');
       setIsAuthenticated(false);
+      setSession(null);
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    const savedId = sessionStorage.getItem('admin_id') || '';
-    const savedPassword = sessionStorage.getItem('admin_password') || '';
-
-    if (savedId && savedPassword) {
-      setAdminId(savedId);
-      setAdminPassword(savedPassword);
-      fetchApplications(savedId, savedPassword);
-    }
-  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -949,13 +944,50 @@ function AdminPage() {
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem('admin_id');
-    sessionStorage.removeItem('admin_password');
     setIsAuthenticated(false);
     setApplications([]);
+    setSession(null);
     setAdminId('');
     setAdminPassword('');
     setError('');
+  };
+
+  const handleRefresh = () => {
+    if (!session) {
+      setError('Session expired. Please login again.');
+      setIsAuthenticated(false);
+      return;
+    }
+
+    fetchApplications(session.id, session.password);
+  };
+
+  const printDocument = (applicationId: string) => {
+    const node = document.getElementById(`application-doc-${applicationId}`);
+    if (!node) return;
+
+    const printWindow = window.open('', '_blank', 'width=900,height=1100');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Partner Application - ${applicationId}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 24px; color: #111827; }
+            h1, h2 { margin: 0 0 12px; }
+            h1 { font-size: 24px; }
+            h2 { font-size: 16px; margin-top: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+            p { margin: 8px 0; line-height: 1.4; font-size: 14px; }
+            .label { font-weight: 700; }
+          </style>
+        </head>
+        <body>${node.innerHTML}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
   };
 
   return (
@@ -1007,7 +1039,7 @@ function AdminPage() {
               <p className="text-sm text-gray-600">Total Applications: <span className="font-semibold text-gray-800">{applications.length}</span></p>
               <div className="flex gap-2">
                 <button
-                  onClick={() => fetchApplications(adminId, adminPassword)}
+                  onClick={handleRefresh}
                   disabled={loading}
                   className="bg-cyan-500 hover:bg-cyan-600 text-white px-3 sm:px-4 py-2 rounded-lg text-sm disabled:opacity-50"
                 >
@@ -1028,20 +1060,42 @@ function AdminPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 {applications.map((app) => (
                   <article key={app.id} className="bg-white rounded-2xl shadow-lg p-4 sm:p-5 border border-slate-100">
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-3 gap-2">
                       <h2 className="font-bold text-gray-800 text-base sm:text-lg">{app.restaurantName || 'Unnamed Restaurant'}</h2>
                       <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 font-medium">{app.status}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mb-3">Doc ID: {app.id}</p>
-                    <div className="space-y-2 text-sm">
-                      <p><span className="font-semibold">Owner:</span> {app.ownerName}</p>
-                      <p><span className="font-semibold">Phone:</span> {app.phone}</p>
-                      <p><span className="font-semibold">Email:</span> {app.email}</p>
-                      <p><span className="font-semibold">Address:</span> {app.address}, {app.city}, {app.state} - {app.pincode}</p>
-                      <p><span className="font-semibold">Monthly Qty:</span> {app.expectedMonthlyQuantity || 'N/A'}</p>
-                      <p><span className="font-semibold">Notes:</span> {app.additionalNotes || 'N/A'}</p>
-                      <p><span className="font-semibold">Submitted:</span> {app.submittedAtIso ? new Date(app.submittedAtIso).toLocaleString() : 'N/A'}</p>
+                    <div id={`application-doc-${app.id}`}>
+                      <h1 style={{ fontSize: '20px', marginBottom: '4px' }}>Partner Application</h1>
+                      <p style={{ fontSize: '12px', color: '#6b7280' }}>Doc ID: {app.id}</p>
+
+                      <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Restaurant Details</h2>
+                      <p><span className="font-semibold">Restaurant Name:</span> {app.restaurantName || 'N/A'}</p>
+                      <p><span className="font-semibold">Owner Name:</span> {app.ownerName || 'N/A'}</p>
+
+                      <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Contact Details</h2>
+                      <p><span className="font-semibold">Phone:</span> {app.phone || 'N/A'}</p>
+                      <p><span className="font-semibold">Email:</span> {app.email || 'N/A'}</p>
+
+                      <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Address</h2>
+                      <p>{app.address || 'N/A'}</p>
+                      <p>{[app.city, app.state, app.pincode].filter(Boolean).join(', ') || 'N/A'}</p>
+
+                      <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Business Requirement</h2>
+                      <p><span className="font-semibold">Expected Monthly Quantity:</span> {app.expectedMonthlyQuantity || 'N/A'}</p>
+                      <p><span className="font-semibold">Additional Notes:</span> {app.additionalNotes || 'N/A'}</p>
+
+                      <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Submission Meta</h2>
+                      <p><span className="font-semibold">Status:</span> {app.status || 'pending'}</p>
+                      <p><span className="font-semibold">Submitted At:</span> {app.submittedAtIso ? new Date(app.submittedAtIso).toLocaleString() : 'N/A'}</p>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => printDocument(app.id)}
+                      className="mt-4 w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg text-sm font-medium"
+                    >
+                      Print / Save as PDF
+                    </button>
                   </article>
                 ))}
               </div>
