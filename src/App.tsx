@@ -153,7 +153,7 @@ function Navigation() {
             <span className="text-2xl sm:text-3xl">🧊</span>
             <div>
               <h1 className="text-white font-bold text-sm sm:text-lg md:text-xl">Dhiraj Ice Centre</h1>
-              <p className="text-cyan-200 text-[9px] sm:text-xs hidden sm:block">Premium Ice Since 1985</p>
+              <p className="text-cyan-200 text-[9px] sm:text-xs hidden sm:block">Premium Ice Since 1980</p>
             </div>
           </Link>
           
@@ -414,10 +414,10 @@ function LocationSection() {
                 <div>
                   <h4 className="text-white font-semibold text-sm sm:text-base">Address</h4>
                   <p className="text-cyan-100 text-sm sm:text-base">
-                    Dheeraj Ice Centre<br />
-                    BC 17 NARAYAN TALLA WEST<br />
-                    Near raj laxmi beeding stor, Baguiati<br />
-                    Kolkata-700059, West Bengal.
+                    DC-17, Dhiraj Ice Centre,<br />
+                    Near Rajlaxmi Bedding Store,<br />
+                    Market Complex, Baguhati,<br />
+                    Kolkata -700059
                   </p>
                 </div>
               </div>
@@ -430,7 +430,7 @@ function LocationSection() {
                 </div>
                 <div>
                   <h4 className="text-white font-semibold text-sm sm:text-base">Phone</h4>
-                  <p className="text-cyan-100 text-sm sm:text-base">+91 98765 43210</p>
+                  <p className="text-cyan-100 text-sm sm:text-base">+91 9432364815 / +91 9007974826</p>
                 </div>
               </div>
               
@@ -442,7 +442,7 @@ function LocationSection() {
                 </div>
                 <div>
                   <h4 className="text-white font-semibold text-sm sm:text-base">Business Hours</h4>
-                  <p className="text-cyan-100 text-sm sm:text-base">Mon - Sat 6:00AM - 10:00 PM</p>
+                  <p className="text-cyan-100 text-sm sm:text-base">Mon - Sun 7A.M - 10:00 PM</p>
                   <p className="text-cyan-100 mt-1 sm:mt-2 text-xs sm:text-sm">* 24/7 Emergency for Bulk Orders</p>
                 </div>
               </div>
@@ -455,7 +455,7 @@ function LocationSection() {
                 </div>
                 <div>
                   <h4 className="text-white font-semibold text-sm sm:text-base">Email</h4>
-                  <p className="text-cyan-100 text-sm sm:text-base">info@dhirajicefactory.com</p>
+                  <p className="text-cyan-100 text-sm sm:text-base">dhiram5298@gmail.com</p>
                 </div>
               </div>
             </div>
@@ -514,7 +514,7 @@ function Footer() {
               <span className="text-2xl sm:text-3xl">🧊</span>
               <div>
                 <h3 className="text-lg sm:text-xl font-bold">Dhiraj Ice Centre</h3>
-                <p className="text-cyan-200 text-xs sm:text-sm">Premium Ice Since 1985</p>
+                <p className="text-cyan-200 text-xs sm:text-sm">Premium Ice Since 1980</p>
               </div>
             </div>
             <p className="text-gray-400 text-sm">
@@ -534,9 +534,9 @@ function Footer() {
           <div className="sm:col-span-2 md:col-span-1">
             <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Contact Us</h4>
             <ul className="space-y-2 text-gray-400 text-sm">
-              <li>📍 Dheeraj Ice Centre<br />BC 17 NARAYAN TALLA WEST<br />Near raj laxmi beeding stor, Baguiati<br />Kolkata-700059, West Bengal.</li>
-              <li>📞 +91 98765 43210</li>
-              <li>✉️ info@dhirajicefactory.com</li>
+              <li>📍 DC-17, Dhiraj Ice Centre<br />Near Rajlaxmi Bedding Store<br />Market Complex, Baguhati<br />Kolkata -700059</li>
+              <li>📞 +91 9432364815 / +91 9007974826</li>
+              <li>✉️ dhiram5298@gmail.com</li>
             </ul>
             <a 
               href={`https://wa.me/${WHATSAPP_NUMBER}`}
@@ -746,7 +746,7 @@ function RegistrationPage() {
                     onChange={handleChange}
                     required
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm sm:text-base"
-                    placeholder="+91 98765 43210"
+                    placeholder="+91 9432364815 / +91 9007974826"
                   />
                 </div>
                 
