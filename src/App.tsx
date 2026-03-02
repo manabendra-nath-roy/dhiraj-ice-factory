@@ -203,9 +203,6 @@ function Navigation() {
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
-          {minQuantity > 1 && (
-            <p className="mt-2 text-xs text-amber-700 font-medium">Minimum order quantity is {minQuantity} KG.</p>
-          )}
         </div>
         
         {/* Mobile Menu */}
