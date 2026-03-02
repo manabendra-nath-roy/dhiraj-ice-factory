@@ -74,7 +74,7 @@ const iceProducts: IceProduct[] = [
     description: 'Large block-style ice pieces ideal for storage, transport cooling, and bulk commercial usage.',
     pricePerKg: 10,
     image: blockIceCubesImage,
-    category: 'Block Ice',
+    category: 'Block Ice Cubes',
     available: true,
     minQuantity: 1
   },
@@ -301,7 +301,9 @@ function ProductCard({ product }: { product: IceProduct }) {
     <div className={`bg-white rounded-xl sm:rounded-2xl shadow-lg overflow-hidden transition-all duration-300 ${isAvailable ? "hover:shadow-2xl transform hover:-translate-y-1 sm:hover:-translate-y-2" : "opacity-75"}`}>
       <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-4 sm:p-6 md:p-8 text-center">
         {hasImageAsset ? (
-          <img src={product.image} alt={product.name} className="w-full h-36 sm:h-40 md:h-44 object-cover rounded-lg sm:rounded-xl mb-2 sm:mb-4" />
+          <div className="bg-white rounded-lg sm:rounded-xl p-2 shadow-sm mb-2 sm:mb-4">
+            <img src={product.image} alt={product.name} className="w-full h-36 sm:h-40 md:h-44 object-contain rounded-md sm:rounded-lg" loading="lazy" />
+          </div>
         ) : (
           <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl mb-2 sm:mb-4">{product.image}</div>
         )}
