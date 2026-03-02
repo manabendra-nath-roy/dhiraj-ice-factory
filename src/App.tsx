@@ -2,6 +2,9 @@ import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-ro
 import { useEffect, useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { savePartnerApplication } from './firebase';
+import iceCubesImage from './assets/ice-cubes.svg';
+import blockIceCubesImage from './assets/block-ice-cubes.svg';
+import dryIceImage from './assets/dry-ice.svg';
 
 // Ice product types
 interface IceProduct {
@@ -12,6 +15,7 @@ interface IceProduct {
   image: string;
   category: string;
   available: boolean;
+  minQuantity?: number;
 }
 
 // Restaurant registration type
@@ -56,39 +60,33 @@ interface AdminSession {
 const iceProducts: IceProduct[] = [
   {
     id: 1,
-    name: 'Crystal Clear Ice Cubes',
-    description: 'Premium quality transparent ice cubes, perfect for bars and restaurants. Slow-melting crystals keep drinks cold without diluting flavor.',
-    pricePerKg: 25,
-    image: '🧊',
+    name: 'Ice Cubes',
+    description: 'Premium quality ice cubes for beverages, restaurants, events, and daily cooling needs.',
+    pricePerKg: 30,
+    image: iceCubesImage,
     category: 'Ice Cubes',
-    available: true
+    available: true,
+    minQuantity: 1
   },
   {
     id: 2,
-    name: 'Crushed Ice',
-    description: 'Finely crushed ice ideal for smoothies, slushies, and food displays. Quick cooling and perfect texture.',
-    pricePerKg: 20,
-    image: '🧊',
-    category: 'Crushed Ice',
-    available: true
+    name: 'Block Ice Cubes',
+    description: 'Large block-style ice pieces ideal for storage, transport cooling, and bulk commercial usage.',
+    pricePerKg: 10,
+    image: blockIceCubesImage,
+    category: 'Block Ice',
+    available: true,
+    minQuantity: 1
   },
   {
     id: 3,
-    name: 'Block Ice',
-    description: 'Large solid ice blocks perfect for catering, food preservation, and decorative purposes.',
-    pricePerKg: 18,
-    image: '🧊',
-    category: 'Block Ice',
-    available: true
-  },
-  {
-    id: 4,
-    name: 'Dry Ice Pellets',
-    description: 'Professional grade dry ice for food transport, fog effects, and industrial cooling applications.',
+    name: 'Dry Ice',
+    description: 'Dry ice for industrial and preservation use. Minimum order quantity is 4 KG.',
     pricePerKg: 80,
-    image: '❄️',
-    category: 'Specialty',
-    available: false
+    image: dryIceImage,
+    category: 'Dry Ice',
+    available: true,
+    minQuantity: 4
   },
   {
     id: 5,
@@ -97,7 +95,8 @@ const iceProducts: IceProduct[] = [
     pricePerKg: 120,
     image: '🍦',
     category: 'Ice Cream',
-    available: false
+    available: false,
+    minQuantity: 1
   },
   {
     id: 6,
@@ -106,7 +105,8 @@ const iceProducts: IceProduct[] = [
     pricePerKg: 45,
     image: '🍋',
     category: 'Specialty',
-    available: false
+    available: false,
+    minQuantity: 1
   },
   {
     id: 7,
@@ -115,7 +115,8 @@ const iceProducts: IceProduct[] = [
     pricePerKg: 150,
     image: '🫧',
     category: 'Dairy',
-    available: false
+    available: false,
+    minQuantity: 1
   },
   {
     id: 8,
@@ -124,7 +125,8 @@ const iceProducts: IceProduct[] = [
     pricePerKg: 60,
     image: '🍧',
     category: 'Specialty',
-    available: false
+    available: false,
+    minQuantity: 1
   }
 ];
 
@@ -201,6 +203,9 @@ function Navigation() {
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
+          {minQuantity > 1 && (
+            <p className="mt-2 text-xs text-amber-700 font-medium">Minimum order quantity is {minQuantity} KG.</p>
+          )}
         </div>
         
         {/* Mobile Menu */}
@@ -289,14 +294,20 @@ function Hero() {
 
 // Product Card Component
 function ProductCard({ product }: { product: IceProduct }) {
-  const [quantity, setQuantity] = useState(1);
+  const minQuantity = product.minQuantity ?? 1;
+  const [quantity, setQuantity] = useState(minQuantity);
   const totalPrice = product.pricePerKg * quantity;
   const isAvailable = product.available;
+  const hasImageAsset = product.image.includes('/') || product.image.startsWith('data:');
 
   return (
     <div className={`bg-white rounded-xl sm:rounded-2xl shadow-lg overflow-hidden transition-all duration-300 ${isAvailable ? "hover:shadow-2xl transform hover:-translate-y-1 sm:hover:-translate-y-2" : "opacity-75"}`}>
       <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-4 sm:p-6 md:p-8 text-center">
-        <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl mb-2 sm:mb-4">{product.image}</div>
+        {hasImageAsset ? (
+          <img src={product.image} alt={product.name} className="w-full h-36 sm:h-40 md:h-44 object-cover rounded-lg sm:rounded-xl mb-2 sm:mb-4" />
+        ) : (
+          <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl mb-2 sm:mb-4">{product.image}</div>
+        )}
         <span className="bg-cyan-100 text-cyan-700 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
           {product.category}
         </span>
@@ -319,13 +330,16 @@ function ProductCard({ product }: { product: IceProduct }) {
             <span className="text-gray-600 font-medium text-sm">Quantity (KG)</span>
             <div className="flex items-center space-x-2 sm:space-x-3">
               <button 
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                disabled={!isAvailable}
+                onClick={() => setQuantity(Math.max(minQuantity, quantity - 1))}
+                disabled={!isAvailable || quantity <= minQuantity}
                 className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full shadow flex items-center justify-center text-lg sm:text-xl font-bold text-cyan-600 hover:bg-cyan-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 -
               </button>
               <span className="w-8 sm:w-12 text-center font-bold text-base sm:text-lg">{quantity}</span>
+              {minQuantity > 1 && (
+                <span className="text-[10px] sm:text-xs text-amber-600 font-medium">Min {minQuantity} KG</span>
+              )}
               <button 
                 onClick={() => setQuantity(quantity + 1)}
                 disabled={!isAvailable}
@@ -343,6 +357,9 @@ function ProductCard({ product }: { product: IceProduct }) {
             </div>
           </div>
         </div>
+        {minQuantity > 1 && (
+          <p className="mb-3 text-xs text-amber-700 font-medium">Minimum order quantity is {minQuantity} KG.</p>
+        )}
         
         {isAvailable ? (
           <a 
