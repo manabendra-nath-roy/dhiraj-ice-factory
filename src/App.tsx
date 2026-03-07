@@ -15,7 +15,9 @@ interface IceProduct {
   image: string;
   category: string;
   available: boolean;
+
   minQuantity?: number;
+
 }
 
 // Restaurant registration type
@@ -60,6 +62,7 @@ interface AdminSession {
 const iceProducts: IceProduct[] = [
   {
     id: 1,
+
     name: 'Ice Cubes',
     description: 'Premium quality ice cubes for beverages, restaurants, events, and daily cooling needs.',
     pricePerKg: 30,
@@ -95,6 +98,7 @@ const iceProducts: IceProduct[] = [
     pricePerKg: 120,
     image: '🍦',
     category: 'Ice Cream',
+
     available: false,
     minQuantity: 1
   },

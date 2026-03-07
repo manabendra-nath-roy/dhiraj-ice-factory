@@ -62,6 +62,7 @@ npm run build
 ```
 
 
+
 ## Firebase setup (Partner form submissions)
 
 1. Create a Firebase project and enable **Firestore Database**.
