@@ -1,6 +1,10 @@
 import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Menu, X } from 'lucide-react';
+import { savePartnerApplication } from './firebase';
+import iceCubesImage from './assets/ice-cubes.svg';
+import blockIceCubesImage from './assets/block-ice-cubes.svg';
+import dryIceImage from './assets/dry-ice.svg';
 
 // Ice product types
 interface IceProduct {
@@ -11,6 +15,9 @@ interface IceProduct {
   image: string;
   category: string;
   available: boolean;
+
+  minQuantity?: number;
+
 }
 
 // Restaurant registration type
@@ -30,43 +37,59 @@ interface RestaurantRegistration {
   submittedAt: string;
 }
 
+interface AdminApplication {
+  id: string;
+  restaurantName: string;
+  ownerName: string;
+  phone: string;
+  email: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  expectedMonthlyQuantity: string;
+  additionalNotes: string;
+  status: string;
+  submittedAtIso: string;
+}
+
+interface AdminSession {
+  id: string;
+  password: string;
+}
+
 // Ice products data
 const iceProducts: IceProduct[] = [
   {
     id: 1,
-    name: 'Crystal Clear Ice Cubes',
-    description: 'Premium quality transparent ice cubes, perfect for bars and restaurants. Slow-melting crystals keep drinks cold without diluting flavor.',
-    pricePerKg: 25,
-    image: '🧊',
+
+    name: 'Ice Cubes',
+    description: 'Premium quality ice cubes for beverages, restaurants, events, and daily cooling needs.',
+    pricePerKg: 30,
+    image: iceCubesImage,
     category: 'Ice Cubes',
-    available: true
+    available: true,
+    minQuantity: 1
   },
   {
     id: 2,
-    name: 'Crushed Ice',
-    description: 'Finely crushed ice ideal for smoothies, slushies, and food displays. Quick cooling and perfect texture.',
-    pricePerKg: 20,
-    image: '🧊',
-    category: 'Crushed Ice',
-    available: true
+    name: 'Block Ice Cubes',
+    description: 'Large block-style ice pieces ideal for storage, transport cooling, and bulk commercial usage.',
+    pricePerKg: 10,
+    image: blockIceCubesImage,
+    category: 'Block Ice Cubes',
+    available: true,
+    minQuantity: 1
   },
   {
     id: 3,
-    name: 'Block Ice',
-    description: 'Large solid ice blocks perfect for catering, food preservation, and decorative purposes.',
-    pricePerKg: 18,
-    image: '🧊',
-    category: 'Block Ice',
-    available: true
-  },
-  {
-    id: 4,
-    name: 'Dry Ice Pellets',
-    description: 'Professional grade dry ice for food transport, fog effects, and industrial cooling applications.',
+    name: 'Dry Ice',
+    description: 'Dry ice for industrial and preservation use. Minimum order quantity is 4 KG.',
     pricePerKg: 80,
-    image: '❄️',
-    category: 'Specialty',
-    available: false
+    image: dryIceImage,
+    category: 'Dry Ice',
+    available: true,
+    minQuantity: 4
   },
   {
     id: 5,
@@ -75,7 +98,9 @@ const iceProducts: IceProduct[] = [
     pricePerKg: 120,
     image: '🍦',
     category: 'Ice Cream',
-    available: false
+
+    available: false,
+    minQuantity: 1
   },
   {
     id: 6,
@@ -84,7 +109,8 @@ const iceProducts: IceProduct[] = [
     pricePerKg: 45,
     image: '🍋',
     category: 'Specialty',
-    available: false
+    available: false,
+    minQuantity: 1
   },
   {
     id: 7,
@@ -93,7 +119,8 @@ const iceProducts: IceProduct[] = [
     pricePerKg: 150,
     image: '🫧',
     category: 'Dairy',
-    available: false
+    available: false,
+    minQuantity: 1
   },
   {
     id: 8,
@@ -102,7 +129,8 @@ const iceProducts: IceProduct[] = [
     pricePerKg: 60,
     image: '🍧',
     category: 'Specialty',
-    available: false
+    available: false,
+    minQuantity: 1
   }
 ];
 
@@ -131,7 +159,7 @@ function Navigation() {
             <span className="text-2xl sm:text-3xl">🧊</span>
             <div>
               <h1 className="text-white font-bold text-sm sm:text-lg md:text-xl">Dhiraj Ice Centre</h1>
-              <p className="text-cyan-200 text-[9px] sm:text-xs hidden sm:block">Premium Ice Since 1985</p>
+              <p className="text-cyan-200 text-[9px] sm:text-xs hidden sm:block">Premium Ice Since 1980</p>
             </div>
           </Link>
           
@@ -267,14 +295,22 @@ function Hero() {
 
 // Product Card Component
 function ProductCard({ product }: { product: IceProduct }) {
-  const [quantity, setQuantity] = useState(1);
+  const minQuantity = product.minQuantity ?? 1;
+  const [quantity, setQuantity] = useState(minQuantity);
   const totalPrice = product.pricePerKg * quantity;
   const isAvailable = product.available;
+  const hasImageAsset = product.image.includes('/') || product.image.startsWith('data:');
 
   return (
     <div className={`bg-white rounded-xl sm:rounded-2xl shadow-lg overflow-hidden transition-all duration-300 ${isAvailable ? "hover:shadow-2xl transform hover:-translate-y-1 sm:hover:-translate-y-2" : "opacity-75"}`}>
       <div className="bg-gradient-to-br from-cyan-50 to-blue-50 p-4 sm:p-6 md:p-8 text-center">
-        <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl mb-2 sm:mb-4">{product.image}</div>
+        {hasImageAsset ? (
+          <div className="bg-white rounded-lg sm:rounded-xl p-2 shadow-sm mb-2 sm:mb-4">
+            <img src={product.image} alt={product.name} className="w-full h-36 sm:h-40 md:h-44 object-contain rounded-md sm:rounded-lg" loading="lazy" />
+          </div>
+        ) : (
+          <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl mb-2 sm:mb-4">{product.image}</div>
+        )}
         <span className="bg-cyan-100 text-cyan-700 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
           {product.category}
         </span>
@@ -297,13 +333,16 @@ function ProductCard({ product }: { product: IceProduct }) {
             <span className="text-gray-600 font-medium text-sm">Quantity (KG)</span>
             <div className="flex items-center space-x-2 sm:space-x-3">
               <button 
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                disabled={!isAvailable}
+                onClick={() => setQuantity(Math.max(minQuantity, quantity - 1))}
+                disabled={!isAvailable || quantity <= minQuantity}
                 className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full shadow flex items-center justify-center text-lg sm:text-xl font-bold text-cyan-600 hover:bg-cyan-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 -
               </button>
               <span className="w-8 sm:w-12 text-center font-bold text-base sm:text-lg">{quantity}</span>
+              {minQuantity > 1 && (
+                <span className="text-[10px] sm:text-xs text-amber-600 font-medium">Min {minQuantity} KG</span>
+              )}
               <button 
                 onClick={() => setQuantity(quantity + 1)}
                 disabled={!isAvailable}
@@ -321,6 +360,9 @@ function ProductCard({ product }: { product: IceProduct }) {
             </div>
           </div>
         </div>
+        {minQuantity > 1 && (
+          <p className="mb-3 text-xs text-amber-700 font-medium">Minimum order quantity is {minQuantity} KG.</p>
+        )}
         
         {isAvailable ? (
           <a 
@@ -392,10 +434,10 @@ function LocationSection() {
                 <div>
                   <h4 className="text-white font-semibold text-sm sm:text-base">Address</h4>
                   <p className="text-cyan-100 text-sm sm:text-base">
-                    Dheeraj Ice Centre<br />
-                    BC 17 NARAYAN TALLA WEST<br />
-                    Near raj laxmi beeding stor, Baguiati<br />
-                    Kolkata-700059, West Bengal.
+                    DC-17, Dhiraj Ice Centre,<br />
+                    Near Rajlaxmi Bedding Store,<br />
+                    Market Complex, Baguhati,<br />
+                    Kolkata -700059
                   </p>
                 </div>
               </div>
@@ -408,7 +450,7 @@ function LocationSection() {
                 </div>
                 <div>
                   <h4 className="text-white font-semibold text-sm sm:text-base">Phone</h4>
-                  <p className="text-cyan-100 text-sm sm:text-base">+91 98765 43210</p>
+                  <p className="text-cyan-100 text-sm sm:text-base">+91 9432364815 / +91 9007974826</p>
                 </div>
               </div>
               
@@ -420,7 +462,7 @@ function LocationSection() {
                 </div>
                 <div>
                   <h4 className="text-white font-semibold text-sm sm:text-base">Business Hours</h4>
-                  <p className="text-cyan-100 text-sm sm:text-base">Mon - Sat 6:00AM - 10:00 PM</p>
+                  <p className="text-cyan-100 text-sm sm:text-base">Mon - Sun 7A.M - 10:00 PM</p>
                   <p className="text-cyan-100 mt-1 sm:mt-2 text-xs sm:text-sm">* 24/7 Emergency for Bulk Orders</p>
                 </div>
               </div>
@@ -433,7 +475,7 @@ function LocationSection() {
                 </div>
                 <div>
                   <h4 className="text-white font-semibold text-sm sm:text-base">Email</h4>
-                  <p className="text-cyan-100 text-sm sm:text-base">info@dhirajicefactory.com</p>
+                  <p className="text-cyan-100 text-sm sm:text-base">dhiram5298@gmail.com</p>
                 </div>
               </div>
             </div>
@@ -492,7 +534,7 @@ function Footer() {
               <span className="text-2xl sm:text-3xl">🧊</span>
               <div>
                 <h3 className="text-lg sm:text-xl font-bold">Dhiraj Ice Centre</h3>
-                <p className="text-cyan-200 text-xs sm:text-sm">Premium Ice Since 1985</p>
+                <p className="text-cyan-200 text-xs sm:text-sm">Premium Ice Since 1980</p>
               </div>
             </div>
             <p className="text-gray-400 text-sm">
@@ -512,9 +554,9 @@ function Footer() {
           <div className="sm:col-span-2 md:col-span-1">
             <h4 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Contact Us</h4>
             <ul className="space-y-2 text-gray-400 text-sm">
-              <li>📍 Dheeraj Ice Centre<br />BC 17 NARAYAN TALLA WEST<br />Near raj laxmi beeding stor, Baguiati<br />Kolkata-700059, West Bengal.</li>
-              <li>📞 +91 98765 43210</li>
-              <li>✉️ info@dhirajicefactory.com</li>
+              <li>📍 DC-17, Dhiraj Ice Centre<br />Near Rajlaxmi Bedding Store<br />Market Complex, Baguhati<br />Kolkata -700059</li>
+              <li>📞 +91 9432364815 / +91 9007974826</li>
+              <li>✉️ dhiram5298@gmail.com</li>
             </ul>
             <a 
               href={`https://wa.me/${WHATSAPP_NUMBER}`}
@@ -585,6 +627,7 @@ function RegistrationPage() {
   });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -596,21 +639,23 @@ function RegistrationPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setSubmitError('');
 
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      await savePartnerApplication({
+        ...formData,
+        status: 'pending',
+        submittedAtIso: new Date().toISOString()
+      });
 
-    const registration: RestaurantRegistration = {
-      ...formData,
-      id: Date.now().toString(),
-      status: 'pending',
-      submittedAt: new Date().toISOString()
-    };
-
-    const existingRegistrations = JSON.parse(localStorage.getItem('restaurant_registrations') || '[]');
-    localStorage.setItem('restaurant_registrations', JSON.stringify([...existingRegistrations, registration]));
-
-    setLoading(false);
-    setSubmitted(true);
+      setSubmitted(true);
+    } catch (error) {
+      console.error('Failed to submit partner application:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unable to submit your application right now. Please try again in a few minutes.';
+      setSubmitError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) {
@@ -662,6 +707,11 @@ function RegistrationPage() {
         </div>
 
         <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-6 md:p-8">
+          {submitError && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {submitError}
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {/* Restaurant Details */}
             <div className="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl sm:rounded-2xl p-4 sm:p-6">
@@ -716,7 +766,7 @@ function RegistrationPage() {
                     onChange={handleChange}
                     required
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm sm:text-base"
-                    placeholder="+91 98765 43210"
+                    placeholder="+91 9432364815 / +91 9007974826"
                   />
                 </div>
                 
@@ -866,6 +916,217 @@ function RegistrationPage() {
   );
 }
 
+
+// Admin Page
+function AdminPage() {
+  const [adminId, setAdminId] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [applications, setApplications] = useState<AdminApplication[]>([]);
+  const [session, setSession] = useState<AdminSession | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const fetchApplications = async (id: string, password: string) => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/partner-applications', {
+        method: 'GET',
+        headers: {
+          'x-admin-id': id,
+          'x-admin-password': password
+        }
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to load applications.');
+      }
+
+      setApplications(data.applications || []);
+      setIsAuthenticated(true);
+      setSession({ id, password });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to load applications.');
+      setIsAuthenticated(false);
+      setSession(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await fetchApplications(adminId, adminPassword);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setApplications([]);
+    setSession(null);
+    setAdminId('');
+    setAdminPassword('');
+    setError('');
+  };
+
+  const handleRefresh = () => {
+    if (!session) {
+      setError('Session expired. Please login again.');
+      setIsAuthenticated(false);
+      return;
+    }
+
+    fetchApplications(session.id, session.password);
+  };
+
+  const printDocument = (applicationId: string) => {
+    const node = document.getElementById(`application-doc-${applicationId}`);
+    if (!node) return;
+
+    const printWindow = window.open('', '_blank', 'width=900,height=1100');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Partner Application - ${applicationId}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 24px; color: #111827; }
+            h1, h2 { margin: 0 0 12px; }
+            h1 { font-size: 24px; }
+            h2 { font-size: 16px; margin-top: 20px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+            p { margin: 8px 0; line-height: 1.4; font-size: 14px; }
+            .label { font-weight: 700; }
+          </style>
+        </head>
+        <body>${node.innerHTML}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-cyan-50 py-6 sm:py-8">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-8">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800">Admin Portal</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-2">Partner Application Documents</p>
+        </div>
+
+        {!isAuthenticated ? (
+          <div className="max-w-md mx-auto bg-white rounded-2xl shadow-xl p-5 sm:p-6">
+            {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Admin ID</label>
+                <input
+                  type="text"
+                  value={adminId}
+                  onChange={(e) => setAdminId(e.target.value)}
+                  required
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  placeholder="Enter admin ID"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input
+                  type="password"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  required
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  placeholder="Enter password"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white py-2.5 rounded-xl font-semibold disabled:opacity-50"
+              >
+                {loading ? 'Signing in...' : 'Login'}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div>
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <p className="text-sm text-gray-600">Total Applications: <span className="font-semibold text-gray-800">{applications.length}</span></p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  className="bg-cyan-500 hover:bg-cyan-600 text-white px-3 sm:px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+                >
+                  Refresh
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="bg-slate-700 hover:bg-slate-800 text-white px-3 sm:px-4 py-2 rounded-lg text-sm"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+
+            {applications.length === 0 ? (
+              <div className="bg-white rounded-2xl shadow p-6 text-center text-gray-500">No applications yet.</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                {applications.map((app) => (
+                  <article key={app.id} className="bg-white rounded-2xl shadow-lg p-4 sm:p-5 border border-slate-100">
+                    <div className="flex items-center justify-between mb-3 gap-2">
+                      <h2 className="font-bold text-gray-800 text-base sm:text-lg">{app.restaurantName || 'Unnamed Restaurant'}</h2>
+                      <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 font-medium">{app.status}</span>
+                    </div>
+                    <div id={`application-doc-${app.id}`}>
+                      <h1 style={{ fontSize: '20px', marginBottom: '4px' }}>Partner Application</h1>
+                      <p style={{ fontSize: '12px', color: '#6b7280' }}>Doc ID: {app.id}</p>
+
+                      <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Restaurant Details</h2>
+                      <p><span className="font-semibold">Restaurant Name:</span> {app.restaurantName || 'N/A'}</p>
+                      <p><span className="font-semibold">Owner Name:</span> {app.ownerName || 'N/A'}</p>
+
+                      <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Contact Details</h2>
+                      <p><span className="font-semibold">Phone:</span> {app.phone || 'N/A'}</p>
+                      <p><span className="font-semibold">Email:</span> {app.email || 'N/A'}</p>
+
+                      <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Address</h2>
+                      <p>{app.address || 'N/A'}</p>
+                      <p>{[app.city, app.state, app.pincode].filter(Boolean).join(', ') || 'N/A'}</p>
+
+                      <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Business Requirement</h2>
+                      <p><span className="font-semibold">Expected Monthly Quantity:</span> {app.expectedMonthlyQuantity || 'N/A'}</p>
+                      <p><span className="font-semibold">Additional Notes:</span> {app.additionalNotes || 'N/A'}</p>
+
+                      <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Submission Meta</h2>
+                      <p><span className="font-semibold">Status:</span> {app.status || 'pending'}</p>
+                      <p><span className="font-semibold">Submitted At:</span> {app.submittedAtIso ? new Date(app.submittedAtIso).toLocaleString() : 'N/A'}</p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => printDocument(app.id)}
+                      className="mt-4 w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg text-sm font-medium"
+                    >
+                      Print / Save as PDF
+                    </button>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Main App Component
 export function App() {
   return (
@@ -877,6 +1138,7 @@ export function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/register" element={<RegistrationPage />} />
+            <Route path="/admin" element={<AdminPage />} />
           </Routes>
         </main>
         <Footer />

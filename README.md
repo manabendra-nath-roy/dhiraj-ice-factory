@@ -7,7 +7,7 @@ This project is a **React + Vite + Tailwind CSS** website for an ice factory bus
 - Shows a homepage with hero, products preview, and location section.
 - Shows a full products page.
 - Shows a partner registration page for restaurants.
-- Saves registration form submissions to browser `localStorage` (demo behavior).
+- Saves partner registration submissions to Firebase Firestore (`partner_applications` collection).
 
 ## Tech stack
 
@@ -60,3 +60,94 @@ Then open the local URL shown by Vite.
 ```bash
 npm run build
 ```
+
+
+
+## Firebase setup (Partner form submissions)
+
+1. Create a Firebase project and enable **Firestore Database**.
+2. Copy `.env.example` to `.env` and fill in values:
+
+```bash
+cp .env.example .env
+```
+
+Required keys:
+
+- `FIREBASE_PROJECT_ID` and `FIREBASE_API_KEY` in Vercel (recommended)
+- `VITE_FIREBASE_PROJECT_ID` and `VITE_FIREBASE_API_KEY` as client-side fallback
+
+3. In Firebase Console, open **Firestore Database** and create/verify collection:
+
+- `partner_applications`
+
+4. Update Firestore Security Rules so client app can write submissions (and admin can read in console).
+   - For production, lock rules down to your real auth/admin model.
+
+Example temporary rule for testing:
+
+```txt
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /partner_applications/{docId} {
+      allow create: if true;
+      allow read: if true;
+    }
+  }
+}
+```
+
+After deployment, submitted forms appear in Firebase Console under:
+
+- Firestore Database → `partner_applications`
+
+Each document stores restaurant details, contact/address, requested quantity, status, and submit timestamps.
+
+
+### Troubleshooting form submission errors
+
+If you see an error while submitting the partner form:
+
+- **`Firebase config missing...`** → On Vercel set `FIREBASE_PROJECT_ID` + `FIREBASE_API_KEY` and redeploy. For local fallback, set `VITE_FIREBASE_PROJECT_ID` + `VITE_FIREBASE_API_KEY` in `.env` and restart `npm run dev`.
+- Optional: you can inject runtime config with `window.__FIREBASE_CONFIG__ = { projectId: "...", apiKey: "..." }` before app startup.
+- **`Permission denied by Firestore rules...`** → update Firestore Security Rules to allow `create` on `partner_applications` for your client/auth model.
+- **`API key is invalid`** → recheck the Web API key in Firebase project settings.
+- **`Firestore API is disabled`** → enable Firestore API in Google Cloud Console for the same project.
+- If the form still fails, open browser DevTools → Network and check the Firestore request response body for exact server details.
+
+
+### Vercel deployment notes
+
+For Vercel deployments, this project now submits partner forms through a serverless endpoint:
+
+- `POST /api/partner-application`
+
+Set these in **Vercel Project Settings → Environment Variables**:
+
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_API_KEY`
+- `ADMIN_PORTAL_ID`
+- `ADMIN_PORTAL_PASSWORD`
+
+Then **Redeploy**.
+
+This avoids exposing your Firebase credentials in client bundle and prevents common `Firebase config missing` issues on Vercel.
+
+
+### Admin-friendly document view (/admin)
+
+A mobile-friendly admin portal is available at:
+
+- `/#/admin`
+
+It displays partner submissions in card/document format (easy for non-technical users).
+
+Set these environment variables in Vercel:
+
+- `ADMIN_PORTAL_ID`
+- `ADMIN_PORTAL_PASSWORD`
+
+Then share only this ID/password with your admin.
+
+> Note: Keep admin credentials only in Vercel Environment Variables. Do not hardcode them in GitHub code.
