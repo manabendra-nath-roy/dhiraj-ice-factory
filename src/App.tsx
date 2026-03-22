@@ -1,10 +1,10 @@
 import { HashRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Eye, EyeOff, Menu, X } from 'lucide-react';
 import { savePartnerApplication } from './firebase';
-import iceCubesImage from './assets/ice-cubes.svg';
-import blockIceCubesImage from './assets/block-ice-cubes.svg';
-import dryIceImage from './assets/dry-ice.svg';
+import iceCubesImage from './assets/ice-cubes.jpg';
+import blockIceCubesImage from './assets/block-ice-cubes.jpg';
+import dryIceImage from './assets/dry-ice.jpg';
 
 // Ice product types
 interface IceProduct {
@@ -49,13 +49,116 @@ interface AdminApplication {
   pincode: string;
   expectedMonthlyQuantity: string;
   additionalNotes: string;
-  status: string;
+  status: AdminStatus;
   submittedAtIso: string;
 }
+
+type AdminStatus =
+  | 'Pending'
+  | 'Verifying'
+  | 'Approved'
+  | 'Rejected'
+  | 'Cancelled'
+  | 'In Transit'
+  | 'Completed';
 
 interface AdminSession {
   id: string;
   password: string;
+}
+
+type AdminSortField = 'submissionDate' | 'restaurantName' | 'ownerName' | 'status' | 'quantity';
+type AdminSortOrder = 'newest' | 'oldest';
+
+const ADMIN_STATUSES: AdminStatus[] = [
+  'Pending',
+  'Verifying',
+  'Approved',
+  'Rejected',
+  'Cancelled',
+  'In Transit',
+  'Completed'
+];
+
+const ADMIN_STATUS_TRANSITIONS: Record<AdminStatus, AdminStatus[]> = {
+  Pending: ['Verifying', 'Rejected', 'Cancelled'],
+  Verifying: ['Approved', 'Rejected', 'Cancelled'],
+  Approved: ['In Transit', 'Cancelled'],
+  Rejected: [],
+  Cancelled: [],
+  'In Transit': ['Completed'],
+  Completed: []
+};
+
+const ADMIN_STATUS_BADGE_CLASS: Record<AdminStatus, string> = {
+  Pending: 'bg-slate-200 text-slate-700',
+  Verifying: 'bg-orange-100 text-orange-700',
+  Approved: 'bg-emerald-100 text-emerald-700',
+  Rejected: 'bg-red-100 text-red-700',
+  Cancelled: 'bg-red-900 text-red-100',
+  'In Transit': 'bg-blue-100 text-blue-700',
+  Completed: 'bg-purple-100 text-purple-700'
+};
+
+function normalizeAdminStatus(value: string): AdminStatus {
+  const normalized = (value || '').trim().toLowerCase();
+
+  switch (normalized) {
+    case 'pending':
+      return 'Pending';
+    case 'verifying':
+      return 'Verifying';
+    case 'approved':
+      return 'Approved';
+    case 'rejected':
+      return 'Rejected';
+    case 'cancelled':
+    case 'canceled':
+      return 'Cancelled';
+    case 'in transit':
+    case 'in_transit':
+      return 'In Transit';
+    case 'completed':
+      return 'Completed';
+    default:
+      return 'Pending';
+  }
+}
+
+function normalizePhoneDigits(value: string): string {
+  return (value || '').replace(/\D/g, '');
+}
+
+function formatPhoneForDisplay(value: string): string {
+  const digits = normalizePhoneDigits(value);
+
+  if (digits.length === 10) {
+    return `+91${digits}`;
+  }
+
+  return value || 'N/A';
+}
+
+function parseQuantitySortValue(value: string): number {
+  const normalized = (value || '').replace(/,/g, '').trim();
+  if (!normalized) return Number.MAX_SAFE_INTEGER;
+
+  const plusMatch = normalized.match(/(\d+)\s*\+/);
+  if (plusMatch) {
+    return Number(plusMatch[1]);
+  }
+
+  const rangeMatch = normalized.match(/(\d+)\s*-\s*(\d+)/);
+  if (rangeMatch) {
+    return Number(rangeMatch[1]);
+  }
+
+  const firstNumberMatch = normalized.match(/\d+/);
+  if (firstNumberMatch) {
+    return Number(firstNumberMatch[0]);
+  }
+
+  return Number.MAX_SAFE_INTEGER;
 }
 
 // Ice products data
@@ -122,16 +225,6 @@ const iceProducts: IceProduct[] = [
     available: false,
     minQuantity: 1
   },
-  {
-    id: 8,
-    name: 'Gourmet Ice Pops',
-    description: 'Premium ice pops in various flavors. Perfect for cafes, hotels, and retail stores.',
-    pricePerKg: 60,
-    image: '🍧',
-    category: 'Specialty',
-    available: false,
-    minQuantity: 1
-  }
 ];
 
 // WhatsApp number (replace with actual number)
@@ -246,7 +339,7 @@ function Hero() {
       <div className="relative max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-12 sm:py-16 md:py-24 lg:py-32">
         <div className="text-center">
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-4 sm:mb-6">
-            Fresh Ice Delivered to Your Door
+            Fresh, Hygienic Ice - Always Ready for Your Business
           </h1>
           <p className="text-base sm:text-lg md:text-xl text-cyan-100 mb-6 sm:mb-8 max-w-2xl mx-auto px-2">
             Premium quality ice cubes, crushed ice, and specialty ice products for restaurants, bars, hotels, and events.
@@ -272,7 +365,7 @@ function Hero() {
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 lg:gap-8 mt-10 sm:mt-16 text-center">
           <div className="bg-white/10 backdrop-blur rounded-xl sm:rounded-2xl p-3 sm:p-6">
-            <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-cyan-300">25+</div>
+            <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-cyan-300">45+</div>
             <div className="text-white text-xs sm:text-sm mt-1 sm:mt-2">Years Experience</div>
           </div>
           <div className="bg-white/10 backdrop-blur rounded-xl sm:rounded-2xl p-3 sm:p-6">
@@ -360,9 +453,6 @@ function ProductCard({ product }: { product: IceProduct }) {
             </div>
           </div>
         </div>
-        {minQuantity > 1 && (
-          <p className="mb-3 text-xs text-amber-700 font-medium">Minimum order quantity is {minQuantity} KG.</p>
-        )}
         
         {isAvailable ? (
           <a 
@@ -395,11 +485,11 @@ function ProductsSection() {
         <div className="text-center mb-10 sm:mb-12 md:mb-16">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-3 sm:mb-4">Our Ice Products</h2>
           <p className="text-sm sm:text-base md:text-xl text-gray-600 max-w-2xl mx-auto">
-            Choose from our wide range of premium ice products. All products are manufactured with strict quality control.
+            Choose from our wide range premium of ice products, manufactured with advanced purification, strict quality control, and the highest hygiene standards to deliver pure, safe, and crystal-clear ice every time.
           </p>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           {iceProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
@@ -416,7 +506,7 @@ function LocationSection() {
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
         <div className="text-center mb-10 sm:mb-12 md:mb-16">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4">Find Us</h2>
-          <p className="text-sm sm:text-base md:text-xl text-cyan-100">Visit our factory or contact us for home delivery</p>
+          <p className="text-sm sm:text-base md:text-xl text-cyan-100">Visit our factory or contact us for fast and reliable bulk ice delivery for restaurants, bars, events, and businesses.</p>
         </div>
         
         <div className="grid md:grid-cols-2 gap-6 sm:gap-8 md:gap-12 items-start">
@@ -601,7 +691,7 @@ function ProductsPage() {
           <p className="text-sm sm:text-base md:text-xl text-gray-600">Browse our complete range of premium ice products</p>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           {iceProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
@@ -620,7 +710,7 @@ function RegistrationPage() {
     email: '',
     address: '',
     city: '',
-    state: '',
+    state: 'WestBengal',
     pincode: '',
     expectedMonthlyQuantity: '',
     additionalNotes: ''
@@ -630,20 +720,51 @@ function RegistrationPage() {
   const [submitError, setSubmitError] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    let nextValue = value;
+
+    if (name === 'phone') {
+      nextValue = value.replace(/\D/g, '').slice(0, 10);
+    }
+
+    if (name === 'pincode') {
+      nextValue = value.replace(/\D/g, '').slice(0, 6);
+    }
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: nextValue
     });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setSubmitError('');
+
+    const trimmedEmail = formData.email.trim();
+
+    if (formData.phone.length !== 10) {
+      setSubmitError('Phone number must be exactly 10 digits.');
+      return;
+    }
+
+    if (formData.pincode.length !== 6) {
+      setSubmitError('PIN code must be exactly 6 digits.');
+      return;
+    }
+
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setSubmitError('Please enter a valid email address.');
+      return;
+    }
+
+    setLoading(true);
 
     try {
       await savePartnerApplication({
         ...formData,
+        email: trimmedEmail,
+        phone: `+91${formData.phone}`,
         status: 'pending',
         submittedAtIso: new Date().toISOString()
       });
@@ -672,7 +793,7 @@ function RegistrationPage() {
             <div className="bg-cyan-50 rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 text-left">
               <h3 className="font-semibold text-cyan-800 mb-2 text-sm sm:text-base">What happens next?</h3>
               <ul className="text-cyan-700 space-y-2 text-sm sm:text-base">
-                <li>✓ Our team will verify your restaurant details</li>
+                <li>✓ Our team will verify your business details</li>
                 <li>✓ We'll call you to discuss pricing and delivery</li>
                 <li>✓ Once approved, you'll receive your partner ID</li>
                 <li>✓ Start enjoying wholesale prices!</li>
@@ -713,16 +834,16 @@ function RegistrationPage() {
             </div>
           )}
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-            {/* Restaurant Details */}
+            {/* Business Details */}
             <div className="bg-gradient-to-r from-cyan-50 to-blue-50 rounded-xl sm:rounded-2xl p-4 sm:p-6">
               <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-3 sm:mb-4 flex items-center">
                 <span className="bg-cyan-500 text-white w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center mr-2 sm:mr-3 text-sm">1</span>
-                Restaurant Details
+                Business Details
               </h3>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">Restaurant Name *</label>
+                  <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">Business / Organization Name *</label>
                   <input 
                     type="text" 
                     name="restaurantName"
@@ -730,7 +851,8 @@ function RegistrationPage() {
                     onChange={handleChange}
                     required
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm sm:text-base"
-                    placeholder="Restaurant name"
+                    maxLength={300}
+                    placeholder="Business / organization name"
                   />
                 </div>
                 
@@ -743,6 +865,7 @@ function RegistrationPage() {
                     onChange={handleChange}
                     required
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm sm:text-base"
+                    maxLength={100}
                     placeholder="Owner name"
                   />
                 </div>
@@ -759,26 +882,33 @@ function RegistrationPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">Phone Number *</label>
-                  <input 
-                    type="tel" 
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm sm:text-base"
-                    placeholder="+91 9432364815 / +91 9007974826"
-                  />
+                  <div className="flex">
+                    <span className="inline-flex items-center px-3 sm:px-4 py-2.5 sm:py-3 rounded-l-lg sm:rounded-l-xl border border-r-0 border-gray-300 bg-gray-50 text-gray-600 text-sm sm:text-base">+91</span>
+                    <input 
+                      type="tel" 
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      required
+                      inputMode="numeric"
+                      pattern="[0-9]{10}"
+                      minLength={10}
+                      maxLength={10}
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-r-lg sm:rounded-r-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm sm:text-base"
+                      placeholder="10 digit mobile number"
+                    />
+                  </div>
                 </div>
                 
                 <div>
-                  <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">Email Address *</label>
+                  <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">Email Address</label>
                   <input 
                     type="email" 
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    required
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm sm:text-base"
+                    maxLength={100}
                     placeholder="restaurant@email.com"
                   />
                 </div>
@@ -802,6 +932,7 @@ function RegistrationPage() {
                     required
                     rows={2}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm sm:text-base"
+                    maxLength={500}
                     placeholder="Street address, area"
                   />
                 </div>
@@ -816,6 +947,7 @@ function RegistrationPage() {
                       onChange={handleChange}
                       required
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm sm:text-base"
+                      maxLength={100}
                       placeholder="City"
                     />
                   </div>
@@ -829,6 +961,7 @@ function RegistrationPage() {
                       onChange={handleChange}
                       required
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm sm:text-base"
+                      maxLength={100}
                       placeholder="State"
                     />
                   </div>
@@ -841,6 +974,10 @@ function RegistrationPage() {
                       value={formData.pincode}
                       onChange={handleChange}
                       required
+                      inputMode="numeric"
+                      pattern="[0-9]{6}"
+                      minLength={6}
+                      maxLength={6}
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm sm:text-base"
                       placeholder="123456"
                     />
@@ -858,7 +995,7 @@ function RegistrationPage() {
               
               <div className="space-y-3 sm:space-y-4">
                 <div>
-                  <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">Monthly Ice Quantity (KG)</label>
+                  <label className="block text-gray-700 font-medium mb-1.5 sm:mb-2 text-sm sm:text-base">Estimated Order Quantity (KG)</label>
                   <select 
                     name="expectedMonthlyQuantity"
                     value={formData.expectedMonthlyQuantity}
@@ -882,6 +1019,7 @@ function RegistrationPage() {
                     onChange={handleChange}
                     rows={2}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm sm:text-base"
+                    maxLength={500}
                     placeholder="Any special requirements or questions..."
                   />
                 </div>
@@ -926,6 +1064,13 @@ function AdminPage() {
   const [session, setSession] = useState<AdminSession | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | AdminStatus>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<AdminSortField>('submissionDate');
+  const [sortOrder, setSortOrder] = useState<AdminSortOrder>('newest');
+  const [statusDrafts, setStatusDrafts] = useState<Record<string, AdminStatus>>({});
+  const [updatingAppId, setUpdatingAppId] = useState<string | null>(null);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
 
   const fetchApplications = async (id: string, password: string) => {
     setLoading(true);
@@ -946,7 +1091,18 @@ function AdminPage() {
         throw new Error(data?.error || 'Failed to load applications.');
       }
 
-      setApplications(data.applications || []);
+      const normalizedApps = (data.applications || []).map((app: AdminApplication) => ({
+        ...app,
+        status: normalizeAdminStatus(app.status)
+      }));
+
+      setApplications(normalizedApps);
+      setStatusDrafts(
+        normalizedApps.reduce((acc: Record<string, AdminStatus>, app: AdminApplication) => {
+          acc[app.id] = app.status;
+          return acc;
+        }, {})
+      );
       setIsAuthenticated(true);
       setSession({ id, password });
     } catch (err) {
@@ -970,6 +1126,13 @@ function AdminPage() {
     setAdminId('');
     setAdminPassword('');
     setError('');
+    setStatusFilter('all');
+    setSearchQuery('');
+    setSortField('submissionDate');
+    setSortOrder('newest');
+    setStatusDrafts({});
+    setUpdatingAppId(null);
+    setShowAdminPassword(false);
   };
 
   const handleRefresh = () => {
@@ -980,6 +1143,63 @@ function AdminPage() {
     }
 
     fetchApplications(session.id, session.password);
+  };
+
+  const handleStatusChange = async (applicationId: string) => {
+    if (!session) {
+      setError('Session expired. Please login again.');
+      setIsAuthenticated(false);
+      return;
+    }
+
+    const currentApp = applications.find((app) => app.id === applicationId);
+    const nextStatus = statusDrafts[applicationId];
+
+    if (!currentApp || !nextStatus || currentApp.status === nextStatus) {
+      return;
+    }
+
+    setUpdatingAppId(applicationId);
+    setError('');
+
+    try {
+      const response = await fetch('/api/partner-applications', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-id': session.id,
+          'x-admin-password': session.password
+        },
+        body: JSON.stringify({
+          id: applicationId,
+          status: nextStatus
+        })
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to update status.');
+      }
+
+      const updatedStatus = normalizeAdminStatus(data?.status || nextStatus);
+      setApplications((prev) =>
+        prev.map((app) => (app.id === applicationId ? { ...app, status: updatedStatus } : app))
+      );
+      setStatusDrafts((prev) => ({
+        ...prev,
+        [applicationId]: updatedStatus
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update status.');
+      setStatusDrafts((prev) => ({
+        ...prev,
+        [applicationId]: currentApp.status
+      }));
+    } finally {
+      setUpdatingAppId(null);
+    setShowAdminPassword(false);
+    }
   };
 
   const printDocument = (applicationId: string) => {
@@ -1010,12 +1230,60 @@ function AdminPage() {
     printWindow.print();
   };
 
+  const filteredAndSortedApplications = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const normalizedQueryDigits = normalizePhoneDigits(query);
+
+    const filtered = applications.filter((app) => {
+      const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
+      const phoneRaw = (app.phone || '').toLowerCase();
+      const phoneDigits = normalizePhoneDigits(app.phone || '');
+      const matchesSearch =
+        !query ||
+        (app.restaurantName || '').toLowerCase().includes(query) ||
+        phoneRaw.includes(query) ||
+        (!!normalizedQueryDigits && phoneDigits.includes(normalizedQueryDigits));
+
+      return matchesStatus && matchesSearch;
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+      let comparison = 0;
+
+      if (sortField === 'submissionDate') {
+        const aTime = new Date(a.submittedAtIso || 0).getTime();
+        const bTime = new Date(b.submittedAtIso || 0).getTime();
+        comparison = aTime - bTime;
+      }
+
+      if (sortField === 'restaurantName') {
+        comparison = (a.restaurantName || '').localeCompare(b.restaurantName || '', undefined, { sensitivity: 'base' });
+      }
+
+      if (sortField === 'ownerName') {
+        comparison = (a.ownerName || '').localeCompare(b.ownerName || '', undefined, { sensitivity: 'base' });
+      }
+
+      if (sortField === 'status') {
+        comparison = ADMIN_STATUSES.indexOf(a.status) - ADMIN_STATUSES.indexOf(b.status);
+      }
+
+      if (sortField === 'quantity') {
+        comparison = parseQuantitySortValue(a.expectedMonthlyQuantity) - parseQuantitySortValue(b.expectedMonthlyQuantity);
+      }
+
+      return sortOrder === 'newest' ? comparison * -1 : comparison;
+    });
+
+    return sorted;
+  }, [applications, searchQuery, sortField, sortOrder, statusFilter]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-cyan-50 py-6 sm:py-8">
       <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-8">
         <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800">Admin Portal</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-2">Partner Application Documents</p>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800">Applications Dashboard</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-2">Review and manage incoming partner requests</p>
         </div>
 
         {!isAuthenticated ? (
@@ -1035,14 +1303,24 @@ function AdminPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input
-                  type="password"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  required
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                  placeholder="Enter password"
-                />
+                <div className="relative">
+                  <input
+                    type={showAdminPassword ? 'text' : 'password'}
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    required
+                    className="w-full px-3 py-2.5 pr-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    placeholder="Enter password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-0 px-3 text-gray-500 hover:text-gray-700"
+                    aria-label={showAdminPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
               <button
                 type="submit"
@@ -1055,8 +1333,14 @@ function AdminPage() {
           </div>
         ) : (
           <div>
-            <div className="flex items-center justify-between mb-4 sm:mb-6">
-              <p className="text-sm text-gray-600">Total Applications: <span className="font-semibold text-gray-800">{applications.length}</span></p>
+            {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-3">
+              <p className="text-sm text-gray-600">
+                Total Applications: <span className="font-semibold text-gray-800">{applications.length}</span>
+                <span className="mx-2 text-gray-300">|</span>
+                Showing: <span className="font-semibold text-gray-800">{filteredAndSortedApplications.length}</span>
+              </p>
               <div className="flex gap-2">
                 <button
                   onClick={handleRefresh}
@@ -1074,50 +1358,142 @@ function AdminPage() {
               </div>
             </div>
 
-            {applications.length === 0 ? (
-              <div className="bg-white rounded-2xl shadow p-6 text-center text-gray-500">No applications yet.</div>
+            <div className="mb-5 bg-white rounded-2xl shadow p-4 sm:p-5 border border-slate-100">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">Status</label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as 'all' | AdminStatus)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  >
+                    <option value="all">All Statuses</option>
+                    {ADMIN_STATUSES.map((status) => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">Search</label>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Business or phone"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">Arrange By</label>
+                  <select
+                    value={sortField}
+                    onChange={(e) => setSortField(e.target.value as AdminSortField)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  >
+                    <option value="submissionDate">Submission Date</option>
+                    <option value="restaurantName">Business / Organization Name</option>
+                    <option value="ownerName">Owner Name</option>
+                    <option value="status">Status</option>
+                    <option value="quantity">Estimated Quantity</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">Display Order</label>
+                  <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value as AdminSortOrder)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {filteredAndSortedApplications.length === 0 ? (
+              <div className="bg-white rounded-2xl shadow p-6 text-center text-gray-500">No applications match the selected filters.</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                {applications.map((app) => (
-                  <article key={app.id} className="bg-white rounded-2xl shadow-lg p-4 sm:p-5 border border-slate-100">
-                    <div className="flex items-center justify-between mb-3 gap-2">
-                      <h2 className="font-bold text-gray-800 text-base sm:text-lg">{app.restaurantName || 'Unnamed Restaurant'}</h2>
-                      <span className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 font-medium">{app.status}</span>
-                    </div>
-                    <div id={`application-doc-${app.id}`}>
-                      <h1 style={{ fontSize: '20px', marginBottom: '4px' }}>Partner Application</h1>
-                      <p style={{ fontSize: '12px', color: '#6b7280' }}>Doc ID: {app.id}</p>
+                {filteredAndSortedApplications.map((app) => {
+                  const availableTransitions = ADMIN_STATUS_TRANSITIONS[app.status] || [];
+                  const draftStatus = statusDrafts[app.id] || app.status;
 
-                      <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Restaurant Details</h2>
-                      <p><span className="font-semibold">Restaurant Name:</span> {app.restaurantName || 'N/A'}</p>
-                      <p><span className="font-semibold">Owner Name:</span> {app.ownerName || 'N/A'}</p>
+                  return (
+                    <article key={app.id} className="bg-white rounded-2xl shadow-lg p-4 sm:p-5 border border-slate-100">
+                      <div className="flex items-center justify-between mb-3 gap-2">
+                        <h2 className="font-bold text-gray-800 text-base sm:text-lg">{app.restaurantName || 'Unnamed Business'}</h2>
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${ADMIN_STATUS_BADGE_CLASS[app.status]}`}>
+                          {app.status}
+                        </span>
+                      </div>
 
-                      <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Contact Details</h2>
-                      <p><span className="font-semibold">Phone:</span> {app.phone || 'N/A'}</p>
-                      <p><span className="font-semibold">Email:</span> {app.email || 'N/A'}</p>
+                      <div className="mb-4 bg-slate-50 rounded-xl p-3 border border-slate-200">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Workflow</p>
+                        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                          <select
+                            value={draftStatus}
+                            onChange={(e) =>
+                              setStatusDrafts((prev) => ({
+                                ...prev,
+                                [app.id]: e.target.value as AdminStatus
+                              }))
+                            }
+                            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                          >
+                            <option value={app.status}>{app.status} (Current)</option>
+                            {availableTransitions.map((status) => (
+                              <option key={status} value={status}>{status}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => handleStatusChange(app.id)}
+                            disabled={draftStatus === app.status || updatingAppId === app.id}
+                            className="rounded-lg bg-slate-700 hover:bg-slate-800 text-white px-3 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {updatingAppId === app.id ? 'Updating...' : 'Update'}
+                          </button>
+                        </div>
+                      </div>
 
-                      <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Address</h2>
-                      <p>{app.address || 'N/A'}</p>
-                      <p>{[app.city, app.state, app.pincode].filter(Boolean).join(', ') || 'N/A'}</p>
+                      <div id={`application-doc-${app.id}`}>
+                        <h1 style={{ fontSize: '20px', marginBottom: '4px' }}>Partner Application</h1>
 
-                      <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Business Requirement</h2>
-                      <p><span className="font-semibold">Expected Monthly Quantity:</span> {app.expectedMonthlyQuantity || 'N/A'}</p>
-                      <p><span className="font-semibold">Additional Notes:</span> {app.additionalNotes || 'N/A'}</p>
+                        <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Business Details</h2>
+                        <p><span className="font-semibold">Business / Organization Name:</span> {app.restaurantName || 'N/A'}</p>
+                        <p><span className="font-semibold">Owner Name:</span> {app.ownerName || 'N/A'}</p>
 
-                      <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Submission Meta</h2>
-                      <p><span className="font-semibold">Status:</span> {app.status || 'pending'}</p>
-                      <p><span className="font-semibold">Submitted At:</span> {app.submittedAtIso ? new Date(app.submittedAtIso).toLocaleString() : 'N/A'}</p>
-                    </div>
+                        <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Contact Details</h2>
+                        <p><span className="font-semibold">Phone:</span> {formatPhoneForDisplay(app.phone)}</p>
+                        <p><span className="font-semibold">Email:</span> {app.email || 'N/A'}</p>
 
-                    <button
-                      type="button"
-                      onClick={() => printDocument(app.id)}
-                      className="mt-4 w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg text-sm font-medium"
-                    >
-                      Print / Save as PDF
-                    </button>
-                  </article>
-                ))}
+                        <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Address</h2>
+                        <p>{app.address || 'N/A'}</p>
+                        <p>{[app.city, app.state, app.pincode].filter(Boolean).join(', ') || 'N/A'}</p>
+
+                        <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Business Requirement</h2>
+                        <p><span className="font-semibold">Expected Monthly Quantity:</span> {app.expectedMonthlyQuantity || 'N/A'}</p>
+                        <p><span className="font-semibold">Additional Notes:</span> {app.additionalNotes || 'N/A'}</p>
+
+                        <h2 style={{ fontSize: '14px', marginTop: '16px' }}>Submission Meta</h2>
+                        <p><span className="font-semibold">Status:</span> {app.status}</p>
+                        <p><span className="font-semibold">Submitted At:</span> {app.submittedAtIso ? new Date(app.submittedAtIso).toLocaleString() : 'N/A'}</p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => printDocument(app.id)}
+                        className="mt-4 w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg text-sm font-medium"
+                      >
+                        Print / Save as PDF
+                      </button>
+                    </article>
+                  );
+                })}
               </div>
             )}
           </div>
